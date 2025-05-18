@@ -1,0 +1,792 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lecture 12: First-Order Logic and Knowledge Representation Quiz</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Arial', sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #f4f4f9, #e0e0e0);
+            color: #333;
+            padding: 20px;
+            transition: all 0.3s ease;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        body.dark-mode {
+            background: linear-gradient(135deg, #1a1a1a, #2a2a2a);
+            color: #e0e0e0;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: auto;
+            flex: 1;
+        }
+
+        .header {
+            text-align: center;
+            padding: 20px;
+            background-color: #ffffff;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+
+        body.dark-mode .header {
+            background-color: #2a2a2a;
+            box-shadow: 0 4px 10px rgba(255, 255, 255, 0.1);
+        }
+
+        .header h1 {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+
+        .dark-mode-toggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 10px 15px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .dark-mode-toggle:hover {
+            background-color: #0056b3;
+        }
+
+        .progress-bar {
+            width: 100%;
+            background-color: #e0e0e0;
+            height: 10px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+
+        .progress {
+            height: 100%;
+            background-color: #28a745;
+            width: 0;
+            transition: width 0.3s ease;
+        }
+
+        .question {
+            background-color: #ffffff;
+            padding: 20px;
+            margin: 15px 0;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            animation: fadeIn 0.5s ease-in;
+            direction: ltr;
+        }
+
+        body.dark-mode .question {
+            background-color: #2a2a2a;
+            box-shadow: 0 4px 10px rgba(255, 255, 255, 0.1);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .question h3 {
+            margin-bottom: 15px;
+            font-size: 1.2em;
+        }
+
+        .options label {
+            display: block;
+            padding: 12px;
+            margin: 8px 0;
+            background-color: #f9f9f9;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.2s;
+        }
+
+        body.dark-mode .options label {
+            background-color: #3a3a3a;
+        }
+
+        .options label:hover {
+            background-color: #e0e0e0;
+            transform: scale(1.02);
+        }
+
+        body.dark-mode .options label:hover {
+            background-color: #4a4a4a;
+        }
+
+        .options input {
+            margin-right: 10px;
+        }
+
+        .feedback {
+            margin-top: 15px;
+            padding: 15px;
+            border-radius: 8px;
+            display: none;
+            direction: rtl;
+            text-align: right;
+            font-size: 1em;
+        }
+
+        .correct {
+            background-color: #d4edda;
+            color: #155724;
+        }
+
+        .wrong {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+
+        .submit-btn {
+            padding: 12px 25px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-top: 15px;
+            transition: background-color 0.3s, transform 0.2s;
+        }
+
+        .submit-btn:hover {
+            background-color: #218838;
+            transform: scale(1.1);
+            animation: bounce 0.3s;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: scale(1.1); }
+            50% { transform: scale(1.15); }
+        }
+
+        .next-btn {
+            padding: 12px 25px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-top: 15px;
+            display: none;
+            transition: background-color 0.3s;
+        }
+
+        .next-btn:hover {
+            background-color: #0056b3;
+        }
+
+        .score {
+            margin-top: 30px;
+            padding: 20px;
+            background-color: #ffffff;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            display: none;
+        }
+
+        body.dark-mode .score {
+            background-color: #2a2a2a;
+            box-shadow: 0 4px 10px rgba(255, 255, 255, 0.1);
+        }
+
+        .score h2 {
+            margin-bottom: 10px;
+        }
+
+        footer {
+            text-align: center;
+            padding: 20px;
+            margin-top: auto;
+            color: #666;
+        }
+
+        body.dark-mode footer {
+            color: #aaa;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+
+            .header h1 {
+                font-size: 1.5em;
+            }
+
+            .question {
+                padding: 15px;
+            }
+
+            .dark-mode-toggle {
+                top: 10px;
+                right: 10px;
+                padding: 8px 12px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .header h1 {
+                font-size: 1.2em;
+            }
+
+            .question h3 {
+                font-size: 1em;
+            }
+
+            .options label {
+                padding: 10px;
+            }
+
+            .submit-btn, .next-btn {
+                padding: 10px 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <button class="dark-mode-toggle" onclick="toggleDarkMode()">Toggle Dark Mode</button>
+    <div class="container">
+        <div class="header">
+            <h1>Lecture 12: First-Order Logic and Knowledge Representation Quiz</h1>
+            <p>This quiz page was created by Eng: XE Ahmed Refat – EELU Student Sohag branch</p>
+        </div>
+        <div class="progress-bar">
+            <div class="progress" id="progress"></div>
+        </div>
+        <div id="quiz">
+            <!-- Questions will be populated by JavaScript -->
+        </div>
+        <div class="score" id="score"></div>
+    </div>
+    <footer>
+        <p>© Eng: XE Ahmed Refat – EELU Sohag</p>
+    </footer>
+
+    <script>
+        // Helper function to escape HTML characters
+        function escapeHTML(str) {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
+        const questions = [
+            {
+                question: "What is First-Order Logic an extension of?",
+                options: [
+                    "Propositional Logic",
+                    "Fuzzy Logic",
+                    "Neutrosophic Logic",
+                    "Description Logics"
+                ],
+                correct: 0,
+                difficulty: "Easy",
+                explanation: "الـ First-Order Logic هو امتداد للـ Propositional Logic، بيسمح بالكلام عن الكائنات وخصائصها وعلاقاتها."
+            },
+            {
+                question: "What does a predicate in First-Order Logic express?",
+                options: [
+                    "A database query",
+                    "Properties or relationships of objects",
+                    "A styling rule",
+                    "A function output"
+                ],
+                correct: 1,
+                difficulty: "Easy",
+                explanation: "الـ Predicate في الـ First-Order Logic بيعبّر عن خصائص الكائنات أو العلاقات بينهم، زي 'red(my_car)' أو 'likes(Ahmed, Apple)'."
+            },
+            {
+                question: "What does the Universal Quantifier (∀) mean in First-Order Logic?",
+                options: [
+                    "There exists",
+                    "For all",
+                    "If and only if",
+                    "Not all"
+                ],
+                correct: 2,
+                difficulty: "Medium",
+                explanation: "الـ Universal Quantifier (∀) بيعني 'لكل'، يعني الجملة صح لكل الكائنات في الـ domain، زي '∀x (human(x) → mortal(x))'."
+            },
+            {
+                question: "Which OWL profile is built upon Description Logics?",
+                options: [
+                    "OWL Lite",
+                    "OWL DL",
+                    "OWL Full",
+                    "OWL XML"
+                ],
+                correct: 3,
+                difficulty: "Medium",
+                explanation: "الـ OWL DL هو بروفايل من الـ OWL مبني على الـ Description Logics، اللي بتوفّر الأساس المنطقي للـ inference."
+            },
+            {
+                question: "What is an example of a function in First-Order Logic?",
+                options: [
+                    "likes(Ahmed, Apple)",
+                    "red(my_car)",
+                    "father_of(Hamlet) = King_Claudius",
+                    "human(x) → mortal(x)"
+                ],
+                correct: 2,
+                difficulty: "Medium",
+                explanation: "الـ Function في الـ First-Order Logic بتربط كائن بكائن تاني، زي 'father_of(Hamlet) = King_Claudius'."
+            },
+            {
+                question: "What does the Existential Quantifier (∃) assert?",
+                options: [
+                    "A statement is true for all objects",
+                    "A statement is true for at least one object",
+                    "A statement is false for all objects",
+                    "A statement is vague"
+                ],
+                correct: 1,
+                difficulty: "Medium",
+                explanation: "الـ Existential Quantifier (∃) بيعني 'فيه'، يعني فيه على الأقل كائن واحد الجملة صح بالنسبة له، زي '∃x (cat(x) ∧ owns(John, x))'."
+            },
+            {
+                question: "What is a limitation of classical logic in knowledge representation?",
+                options: [
+                    "It handles uncertainty well",
+                    "It struggles with vagueness and uncertainty",
+                    "It cannot represent facts",
+                    "It is used for web styling"
+                ],
+                correct: 2,
+                difficulty: "Medium",
+                explanation: "الـ Classical Logic بيواجه صعوبة في التعامل مع الغموض وعدم اليقين، لأنه بيعتمد على true/false بس."
+            },
+            {
+                question: "What does the OWL axiom `rdfs:subClassOf` indicate?",
+                options: [
+                    "Two classes have no common members",
+                    "One class is a specialization of another",
+                    "Two classes have the same members",
+                    "A class is unrelated to another"
+                ],
+                correct: 1,
+                difficulty: "Medium",
+                explanation: "الـ `rdfs:subClassOf` في الـ OWL بيعني إن كلاس هي تخصيص (subclass) لكلاس تاني، زي إن 'Cat' هو subclass لـ 'Animal'."
+            },
+            {
+                question: "What is represented as a predicate applied to specific objects in classical logic?",
+                options: [
+                    "Rules",
+                    "Facts",
+                    "Queries",
+                    "Styles"
+                ],
+                correct: 1,
+                difficulty: "Easy",
+                explanation: "الـ Facts في الـ Classical Logic بتتمثل كـ predicates على كائنات معيّنة، زي 'color(sky, blue)'."
+            },
+            {
+                question: "What does the statement `∀x (student(x) → ∃y (course(y) ∧ takes(x, y)))` mean?",
+                options: [
+                    "Some students take courses",
+                    "Every student takes at least one course",
+                    "No student takes a course",
+                    "Courses are taken by all objects"
+                ],
+                correct: 1,
+                difficulty: "Hard",
+                explanation: "الجملة بتقول إن كل طالب (∀x) لو كان طالب (student(x))، فيه كورس واحد على الأقل (∃y) بياخده (takes(x, y))."
+            },
+            {
+                question: "What assigns meaning to symbols in First-Order Logic?",
+                options: [
+                    "Interpretation",
+                    "Styling",
+                    "Querying",
+                    "Encryption"
+                ],
+                correct: 0,
+                difficulty: "Medium",
+                explanation: "الـ Interpretation في الـ First-Order Logic هي اللي بتدي معنى للرموز (objects، predicates، functions) في domain معيّن."
+            },
+            {
+                question: "What does the OWL axiom `owl:equivalentClass` mean?",
+                options: [
+                    "Two classes have no common members",
+                    "Two classes have the same members",
+                    "One class is a subclass of another",
+                    "A class is vague"
+                ],
+                correct: 1,
+                difficulty: "Medium",
+                explanation: "الـ `owl:equivalentClass` بيعني إن الكلاسين عندهم نفس الأعضاء، يعني بيمثلوا نفس المفهوم."
+            },
+            {
+                question: "What is a challenge of classical logic in the real world?",
+                options: [
+                    "It handles vagueness effectively",
+                    "It struggles with incomplete data and exceptions",
+                    "It cannot represent relationships",
+                    "It is used for web design"
+                ],
+                correct: 2,
+                difficulty: "Medium",
+                explanation: "الـ Classical Logic بيواجه تحدي في التعامل مع البيانات الناقصة والاستثناءات، لأنه بيحتاج بيانات واضحة ومؤكدة."
+            },
+            {
+                question: "What does the predicate `likes(Ahmed, Apple)` express?",
+                options: [
+                    "A property of Ahmed",
+                    "A relationship between Ahmed and Apple",
+                    "A function mapping Ahmed to Apple",
+                    "A universal quantifier"
+                ],
+                correct: 1,
+                difficulty: "Easy",
+                explanation: "الـ Predicate زي `likes(Ahmed, Apple)` بيعبّر عن علاقة بين كائنين، يعني 'أحمد بيحب التفاح'."
+            },
+            {
+                question: "What is a key feature of First-Order Logic compared to Propositional Logic?",
+                options: [
+                    "It uses binary true/false values only",
+                    "It can represent relationships and general claims",
+                    "It cannot handle objects",
+                    "It is less expressive"
+                ],
+                correct: 2,
+                difficulty: "Medium",
+                explanation: "الـ First-Order Logic أقوى من الـ Propositional Logic لأنه بيقدر يمثّل العلاقات والجمل العامة باستخدام quantifiers."
+            },
+            {
+                question: "What does the OWL axiom `owl:disjointWith` indicate?",
+                options: [
+                    "Two classes have the same members",
+                    "Two classes have no common members",
+                    "One class is a subclass of another",
+                    "A class is uncertain"
+                ],
+                correct: 1,
+                difficulty: "Medium",
+                explanation: "الـ `owl:disjointWith` بيعني إن الكلاسين ماعندهمش أعضاء مشتركة، زي 'Cat' و'Dog'."
+            },
+            {
+                question: "What is an example of vagueness in the real world?",
+                options: [
+                    "The sky is blue",
+                    "Someone is 'tall'",
+                    "The room is 25 degrees",
+                    "John owns a cat"
+                ],
+                correct: 1,
+                difficulty: "Easy",
+                explanation: "الـ Vagueness زي مفهوم 'طويل' لأنه مالهوش حدود واضحة، على عكس جمل زي 'السماء زرقاء'."
+            },
+            {
+                question: "What does classical logic struggle to handle?",
+                options: [
+                    "Precise statements",
+                    "Contradictory information",
+                    "Binary true/false values",
+                    "Object properties"
+                ],
+                correct: 2,
+                difficulty: "Medium",
+                explanation: "الـ Classical Logic مش بيقدر يتعامل مع المعلومات المتضاربة (contradictions) لأنه بيفترض إن كل حاجة إما صح إما غلط."
+            },
+            {
+                question: "What is represented as implications (→) in classical logic?",
+                options: [
+                    "Facts",
+                    "Rules",
+                    "Queries",
+                    "Styles"
+                ],
+                correct: 1,
+                difficulty: "Medium",
+                explanation: "الـ Rules في الـ Classical Logic بتتمثل كـ implications (→)، زي '∀x (bird(x) → flies(x))'."
+            },
+            {
+                question: "What does the statement `∃x (cat(x) ∧ owns(John, x))` mean?",
+                options: [
+                    "All cats are owned by John",
+                    "John owns a cat",
+                    "No cat is owned by John",
+                    "John is a cat"
+                ],
+                correct: 1,
+                difficulty: "Hard",
+                explanation: "الجملة بتقول فيه كائن (∃x) هو قطة (cat(x)) وجون بيملكه (owns(John, x))، يعني 'جون عنده قطة'."
+            },
+            {
+                question: "First-Order Logic is more expressive than Propositional Logic.",
+                type: "truefalse",
+                correct: true,
+                difficulty: "Easy",
+                explanation: "صح، الـ First-Order Logic أكثر تعبيرًا من الـ Propositional Logic لأنه بيقدر يمثّل الكائنات، العلاقات، والجمل العامة."
+            },
+            {
+                question: "Classical logic can effectively handle vagueness.",
+                type: "truefalse",
+                correct: false,
+                difficulty: "Medium",
+                explanation: "غلط، الـ Classical Logic مش بيقدر يتعامل مع الغموض (vagueness) لأنه بيعتمد على قيم true/false بس."
+            },
+            {
+                question: "The Universal Quantifier (∀) means 'there exists'.",
+                type: "truefalse",
+                correct: false,
+                difficulty: "Easy",
+                explanation: "غلط، الـ Universal Quantifier (∀) بيعني 'لكل'، مش 'فيه'، اللي هي الـ Existential Quantifier (∃)."
+            },
+            {
+                question: "OWL DL is built upon Description Logics.",
+                type: "truefalse",
+                correct: true,
+                difficulty: "Medium",
+                explanation: "صح، الـ OWL DL مبني على الـ Description Logics، اللي بتوفّر الأساس المنطقي للـ OWL."
+            },
+            {
+                question: "Predicates in First-Order Logic always return a numerical value.",
+                type: "truefalse",
+                correct: false,
+                difficulty: "Medium",
+                explanation: "غلط، الـ Predicates في الـ First-Order Logic بترجّع قيمة true أو false، مش قيمة عددية."
+            },
+            {
+                question: "The OWL axiom `owl:equivalentClass` means two classes have the same members.",
+                type: "truefalse",
+                correct: true,
+                difficulty: "Medium",
+                explanation: "صح، الـ `owl:equivalentClass` بيعني إن الكلاسين عندهم نفس الأعضاء."
+            },
+            {
+                question: "First-Order Logic can represent uncertainty.",
+                type: "truefalse",
+                correct: false,
+                difficulty: "Medium",
+                explanation: "غلط، الـ First-Order Logic لسه بيعتمد على true/false ومش بيقدر يمثّل عدم اليقين."
+            },
+            {
+                question: "Functions in First-Order Logic map objects to other objects.",
+                type: "truefalse",
+                correct: true,
+                difficulty: "Easy",
+                explanation: "صح، الـ Functions في الـ First-Order Logic بتربط كائن بكائن تاني، زي 'father_of(Hamlet) = King_Claudius'."
+            },
+            {
+                question: "Classical logic handles contradictory information effectively.",
+                type: "truefalse",
+                correct: false,
+                difficulty: "Medium",
+                explanation: "غلط، الـ Classical Logic مش بيقدر يتعامل مع المعلومات المتضاربة لأنه بيفترض إن كل حاجة إما صح إما غلط."
+            },
+            {
+                question: "The statement `∀x (bird(x) → flies(x))` is a rule in classical logic.",
+                type: "truefalse",
+                correct: true,
+                difficulty: "Medium",
+                explanation: "صح، الجملة دي هي rule في الـ Classical Logic، بتعبّر عن علاقة عامة باستخدام الـ implication (→)."
+            },
+            {
+                question: "Vagueness is a challenge for classical logic.",
+                type: "truefalse",
+                correct: true,
+                difficulty: "Easy",
+                explanation: "صح، الـ Vagueness (الغموض) هو تحدي للـ Classical Logic لأن المفاهيم الغامضة مالهاش حدود واضحة."
+            },
+            {
+                question: "The OWL axiom `rdfs:subClassOf` means two classes are disjoint.",
+                type: "truefalse",
+                correct: false,
+                difficulty: "Medium",
+                explanation: "غلط، الـ `rdfs:subClassOf` بيعني إن كلاس هو subclass لكلاس تاني، مش إنهم disjoint."
+            },
+            {
+                question: "Interpretation assigns meaning to symbols in First-Order Logic.",
+                type: "truefalse",
+                correct: true,
+                difficulty: "Easy",
+                explanation: "صح، الـ Interpretation هي اللي بتدي معنى للرموز (objects، predicates، functions) في الـ First-Order Logic."
+            },
+            {
+                question: "The Existential Quantifier (∃) means a statement is true for all objects.",
+                type: "truefalse",
+                correct: false,
+                difficulty: "Easy",
+                explanation: "غلط، الـ Existential Quantifier (∃) بيعني الجملة صح لكائن واحد على الأقل، مش لكل الكائنات."
+            },
+            {
+                question: "Description Logics enable logical inference in OWL ontologies.",
+                type: "truefalse",
+                correct: true,
+                difficulty: "Medium",
+                explanation: "صح، الـ Description Logics بتوفّر الأساس المنطقي للـ inference في الـ OWL ontologies."
+            }
+        ];
+
+        let currentQuestion = 0;
+        let score = 0;
+
+        function updateProgress() {
+            const progress = document.getElementById('progress');
+            const percentage = ((currentQuestion + 1) / questions.length) * 100;
+            progress.style.width = `${percentage}%`;
+        }
+
+        function loadQuestion() {
+            const quizDiv = document.getElementById('quiz');
+            const question = questions[currentQuestion];
+            let html = `
+                <div class="question">
+                    <h3>${currentQuestion + 1}. ${escapeHTML(question.question)} (${question.difficulty})</h3>
+                    <div class="options">
+            `;
+
+            if (question.type === 'truefalse') {
+                html += `
+                    <label><input type="radio" name="answer" value="true"> True</label>
+                    <label><input type="radio" name="answer" value="false"> False</label>
+                `;
+            } else {
+                question.options.forEach((option, index) => {
+                    html += `
+                        <label><input type="radio" name="answer" value="${index}"> ${escapeHTML(option)}</label>
+                    `;
+                });
+            }
+
+            html += `
+                    </div>
+                    <button class="submit-btn" onclick="submitAnswer()">Submit</button>
+                    <div class="feedback" id="feedback"></div>
+                    <button class="next-btn" onclick="nextQuestion()">Next</button>
+                </div>
+            `;
+
+            quizDiv.innerHTML = html;
+            updateProgress();
+        }
+
+        function submitAnswer() {
+            const selected = document.querySelector('input[name="answer"]:checked');
+            const feedbackDiv = document.getElementById('feedback');
+            const question = questions[currentQuestion];
+
+            if (!selected) {
+                feedbackDiv.style.display = 'block';
+                feedbackDiv.className = 'feedback wrong';
+                feedbackDiv.innerHTML = 'من فضلك اختار إجابة!';
+                return;
+            }
+
+            const isCorrect = question.type === 'truefalse'
+                ? selected.value === question.correct.toString()
+                : parseInt(selected.value) === question.correct;
+
+            feedbackDiv.style.display = 'block';
+            feedbackDiv.className = `feedback ${isCorrect ? 'correct' : 'wrong'}`;
+            feedbackDiv.innerHTML = isCorrect
+                ? `صح! ${question.explanation}`
+                : `غلط! ${question.explanation}`;
+
+            if (isCorrect) score++;
+
+            document.querySelector('.submit-btn').style.display = 'none';
+            document.querySelector('.next-btn').style.display = 'block';
+        }
+
+        function nextQuestion() {
+            currentQuestion++;
+            if (currentQuestion < questions.length) {
+                loadQuestion();
+            } else {
+                showScore();
+            }
+        }
+
+        function showScore() {
+            const quizDiv = document.getElementById('quiz');
+            const scoreDiv = document.getElementById('score');
+            quizDiv.style.display = 'none';
+            scoreDiv.style.display = 'block';
+
+            let feedback = '';
+            const percentage = (score / questions.length) * 100;
+            if (percentage >= 80) {
+                feedback = 'ممتاز! عملت شغل عالي جداً، كمل كده!';
+            } else if (percentage >= 50) {
+                feedback = 'كويس! بس فيه مجال للتحسين، ركز أكتر.';
+            } else {
+                feedback = 'محتاج تذاكر أكتر! جرب تراجع الـ lecture تاني.';
+            }
+
+            scoreDiv.innerHTML = `
+                <h2>Your Final Score: ${score} out of ${questions.length}</h2>
+                <p>Percentage: ${percentage.toFixed(2)}%</p>
+                <p>${feedback}</p>
+            `;
+        }
+
+        function toggleDarkMode() {
+            document.body.classList.toggle('dark-mode');
+        }
+
+        // Load the first question
+        loadQuestion();
+    </script>
+</body>
+</html>
